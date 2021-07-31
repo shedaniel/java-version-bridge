@@ -1,0 +1,101 @@
+plugins {
+    id "java"
+    id "idea"
+    id "eclipse"
+    id "maven-publish"
+    id "java-gradle-plugin"
+    id "com.github.johnrengelman.shadow" version "7.0.0"
+    id "org.cadixdev.licenser" version "0.6.1"
+}
+
+group "me.shedaniel"
+
+def runNumber = System.getenv("GITHUB_RUN_NUMBER") ?: "9999"
+
+version = base_version + "." + runNumber
+
+logger.lifecycle(":building java-version-bridge v${version}")
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.encoding = "UTF-8"
+    it.options.release = 8
+}
+
+repositories {
+    maven { url "https://maven.architectury.dev/" }
+    gradlePluginPortal()
+    mavenLocal()
+}
+
+configurations {
+    include
+    compileOnly.extendsFrom include
+}
+
+license {
+    header = rootProject.file("HEADER")
+
+    ext {
+        name = "Chocohead, shedaniel"
+        year = "2021"
+    }
+
+    include "**/*.java"
+}
+
+gradlePlugin {
+    plugins {
+        javaversionbridge {
+            id = "me.shedaniel.java-version-bridge"
+            implementationClass = "me.shedaniel.javaversionbridge.JavaVersionBridgePlugin"
+        }
+    }
+}
+
+dependencies {
+    implementation gradleApi()
+    include "dev.architectury:architectury-transformer:5.1.9999"
+}
+
+jar {
+    archiveClassifier = "raw"
+}
+
+shadowJar {
+    relocate "dev.architectury", "me.shedaniel.javaversionbridge.architectury"
+    configurations = [project.configurations.include]
+    archiveClassifier = ""
+}
+
+assemble.dependsOn shadowJar
+
+publishing {
+    publications {
+        main(MavenPublication) {
+            groupId "me.shedaniel.java-version-bridge"
+            artifactId "me.shedaniel.java-version-bridge.gradle.plugin"
+            
+            shadow.component it
+        }
+
+        snapshot(MavenPublication) {
+            groupId "me.shedaniel.java-version-bridge"
+            artifactId "me.shedaniel.java-version-bridge.gradle.plugin"
+            version base_version + "-SNAPSHOT"
+
+            shadow.component it
+        }
+    }
+
+    repositories {
+        if (System.getenv("MAVEN_PASS") != null) {
+            maven {
+                url = "https://deploy.shedaniel.me/"
+                credentials {
+                    username = "shedaniel"
+                    password = System.getenv("MAVEN_PASS")
+                }
+            }
+        }
+    }
+}
