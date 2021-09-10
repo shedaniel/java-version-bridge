@@ -54,7 +54,7 @@ gradlePlugin {
 
 dependencies {
     implementation gradleApi()
-    include "dev.architectury:architectury-transformer:5.1.9999"
+    include "dev.architectury:architectury-transformer:5.1.55"
 }
 
 jar {
